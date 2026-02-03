@@ -1,6 +1,8 @@
 # SB Mini II Keyboard Controller
 
-USB keyboard interface for an Apple II replica, using a Raspberry Pi Pico. Converts USB HID keyboard input to 7-bit parallel ASCII output with STROBE and RESET signals matching the original Apple II keyboard interface.
+USB keyboard interface for an Apple II replica, using a Raspberry Pi Pico. Converts USB HID keyboard input to 7-bit parallel ASCII output with STROBE signal matching the original Apple II keyboard interface.
+
+**RESET signal is active HIGH vs active LOW** - use a NPN transistor to pull the Apple II's reset line low.
 
 ## Pinout
 
@@ -33,7 +35,7 @@ USB keyboard interface for an Apple II replica, using a Raspberry Pi Pico. Conve
 |---------|--------------------------|----------------------------|
 | GP0-GP6 | Data D0-D6 (7-bit ASCII) | Active high                |
 | GP7     | STROBE                   | Active high, ~100us pulse  |
-| GP8     | RESET                    | Active low (normally high) |
+| GP8     | RESET                    | Active high                |
 | GP25    | Onboard LED              | On when keyboard connected |
 
 ## Features

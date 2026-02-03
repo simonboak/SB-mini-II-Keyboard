@@ -29,7 +29,7 @@
 #define DATA_PIN_BASE    0      // GP0-GP6
 #define DATA_PIN_COUNT   7
 #define STROBE_PIN       7      // GP7 - active high
-#define RESET_PIN        8      // GP8 - active low (normally high)
+#define RESET_PIN        8      // GP8 - active high
 #define LED_PIN          25     // Onboard LED
 
 // ---------------------------------------------------------------------------
@@ -98,10 +98,10 @@ static void init_gpio(void) {
     gpio_set_dir(STROBE_PIN, GPIO_OUT);
     gpio_put(STROBE_PIN, 0);
 
-    // RESET - active low, idle high
+    // RESET - active high, idle low
     gpio_init(RESET_PIN);
     gpio_set_dir(RESET_PIN, GPIO_OUT);
-    gpio_put(RESET_PIN, 1);
+    gpio_put(RESET_PIN, 0);
 
     // Onboard LED - keyboard connection indicator
     gpio_init(LED_PIN);
@@ -116,9 +116,9 @@ static void pulse_strobe(void) {
 }
 
 static void pulse_reset(void) {
-    gpio_put(RESET_PIN, 0);
-    sleep_ms(RESET_DURATION_MS);
     gpio_put(RESET_PIN, 1);
+    sleep_ms(RESET_DURATION_MS);
+    gpio_put(RESET_PIN, 0);
 }
 
 static void output_key(uint8_t ascii) {
