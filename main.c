@@ -8,6 +8,7 @@
  *   GP0-GP6  - Data bits D0-D6 (7-bit ASCII, active high)
  *   GP7      - STROBE (active high, ~100us pulse on each keypress)
  *   GP8      - RESET  (active low, normally high)
+ *   GP9      - SHIFT  (high when Shift key held, active high)
  *   GP25     - Onboard LED (indicates keyboard connected)
  *
  * UART on GP0/GP1 is used for debug output (stdio).
@@ -30,6 +31,7 @@
 #define DATA_PIN_COUNT   7
 #define STROBE_PIN       7      // GP7 - active high
 #define RESET_PIN        8      // GP8 - active high
+#define SHIFT_PIN        9      // GP9 - high when Shift held
 #define LED_PIN          25     // Onboard LED
 
 // ---------------------------------------------------------------------------
@@ -103,6 +105,11 @@ static void init_gpio(void) {
     gpio_set_dir(RESET_PIN, GPIO_OUT);
     gpio_put(RESET_PIN, 0);
 
+    // SHIFT - high when Shift key held, for Apple II game connector
+    gpio_init(SHIFT_PIN);
+    gpio_set_dir(SHIFT_PIN, GPIO_OUT);
+    gpio_put(SHIFT_PIN, 0);
+
     // Onboard LED - keyboard connection indicator
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -174,6 +181,11 @@ static bool is_new_key(uint8_t keycode, const hid_keyboard_report_t *prev) {
 }
 
 static void process_kbd_report(hid_keyboard_report_t const *report) {
+    // Output Shift state on GP9 for Apple II game connector
+    bool shift_held = (report->modifier & (KEYBOARD_MODIFIER_LEFTSHIFT |
+                                           KEYBOARD_MODIFIER_RIGHTSHIFT)) != 0;
+    gpio_put(SHIFT_PIN, shift_held);
+
     // Toggle Caps Lock on new press
     for (int i = 0; i < 6; i++) {
         if (report->keycode[i] == HID_KEY_CAPS_LOCK &&
