@@ -5,15 +5,13 @@
  * matching the original Apple II keyboard interface.
  *
  * GPIO mapping:
- *   GP0-GP6  - Data bits D0-D6 (7-bit ASCII, active high)
- *   GP7      - STROBE (active high, ~100us pulse on each keypress)
- *   GP8      - RESET  (active low, normally high)
- *   GP9      - SHIFT  (high when Shift key held, active high)
+ *   GP0      - UART TX (debug output, 115200 baud)
+ *   GP1      - UART RX
+ *   GP2-GP8  - Data bits D0-D6 (7-bit ASCII, active high)
+ *   GP9      - STROBE (active high, ~100us pulse on each keypress)
+ *   GP10     - RESET  (active high)
+ *   GP11     - SHIFT  (high when Shift key held, active high)
  *   GP25     - Onboard LED (indicates keyboard connected)
- *
- * UART on GP0/GP1 is used for debug output (stdio).
- * Note: GP0/GP1 are shared with D0/D1 data outputs - debug UART
- * will conflict with data output. Disable UART stdio for production use.
  */
 
 #include <stdlib.h>
@@ -27,11 +25,11 @@
 // ---------------------------------------------------------------------------
 // Pin definitions
 // ---------------------------------------------------------------------------
-#define DATA_PIN_BASE    0      // GP0-GP6
+#define DATA_PIN_BASE    2      // GP2-GP8
 #define DATA_PIN_COUNT   7
-#define STROBE_PIN       7      // GP7 - active high
-#define RESET_PIN        8      // GP8 - active high
-#define SHIFT_PIN        9      // GP9 - high when Shift held
+#define STROBE_PIN       9      // GP9 - active high
+#define RESET_PIN        10     // GP10 - active high
+#define SHIFT_PIN        11     // GP11 - high when Shift held
 #define LED_PIN          25     // Onboard LED
 
 // ---------------------------------------------------------------------------
@@ -88,7 +86,7 @@ static bool caps_lock = false;
 // ---------------------------------------------------------------------------
 
 static void init_gpio(void) {
-    // Data output pins GP0-GP6
+    // Data output pins GP2-GP8
     for (int i = 0; i < DATA_PIN_COUNT; i++) {
         gpio_init(DATA_PIN_BASE + i);
         gpio_set_dir(DATA_PIN_BASE + i, GPIO_OUT);
@@ -129,7 +127,7 @@ static void pulse_reset(void) {
 }
 
 static void output_key(uint8_t ascii) {
-    // Set 7-bit ASCII value on GP0-GP6
+    // Set 7-bit ASCII value on GP2-GP8
     for (int i = 0; i < DATA_PIN_COUNT; i++) {
         gpio_put(DATA_PIN_BASE + i, (ascii >> i) & 1);
     }
@@ -181,7 +179,7 @@ static bool is_new_key(uint8_t keycode, const hid_keyboard_report_t *prev) {
 }
 
 static void process_kbd_report(hid_keyboard_report_t const *report) {
-    // Output Shift state on GP9 for Apple II game connector
+    // Output Shift state on GP11 for Apple II game connector
     bool shift_held = (report->modifier & (KEYBOARD_MODIFIER_LEFTSHIFT |
                                            KEYBOARD_MODIFIER_RIGHTSHIFT)) != 0;
     gpio_put(SHIFT_PIN, shift_held);
