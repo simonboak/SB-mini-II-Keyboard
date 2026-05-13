@@ -11,7 +11,7 @@
  *   GP9      - STROBE (active high, ~100us pulse on each keypress)
  *   GP10     - RESET  (active high)
  *   GP11     - SHIFT  (high when Shift key held, active high)
- *   GP25     - Onboard LED (indicates keyboard connected)
+ *   GP25     - Onboard LED (blinks while searching, solid when connected)
  */
 
 #include <stdlib.h>
@@ -37,6 +37,7 @@
 // ---------------------------------------------------------------------------
 #define STROBE_DURATION_US   100     // ~100us to match original AY-5-3600
 #define RESET_DURATION_MS    250     // Power-on reset hold time
+#define LED_BLINK_MS         500     // LED blink half-period while searching
 
 // ---------------------------------------------------------------------------
 // Apple II arrow key ASCII codes
@@ -80,6 +81,8 @@ static const uint8_t keycode_to_ascii_shift[] = {
 // ---------------------------------------------------------------------------
 static hid_keyboard_report_t prev_report = {0};
 static bool caps_lock = false;
+static bool kbd_connected = false;
+static bool kbd_connected = false;
 
 // ---------------------------------------------------------------------------
 // GPIO
@@ -234,6 +237,7 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance,
 
     if (itf_protocol == HID_ITF_PROTOCOL_KEYBOARD) {
         printf("Keyboard connected (dev=%d, instance=%d)\n", dev_addr, instance);
+        kbd_connected = true;
         gpio_put(LED_PIN, 1);
 
         // Request boot protocol for fixed-format reports
@@ -247,7 +251,7 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
     (void)dev_addr;
     (void)instance;
     printf("Keyboard disconnected\n");
-    gpio_put(LED_PIN, 0);
+    kbd_connected = false;
     memset(&prev_report, 0, sizeof(prev_report));
 }
 
@@ -284,6 +288,12 @@ int main(void) {
 
     while (true) {
         tuh_task();
+
+        // Blink LED while waiting for keyboard; solid on when connected
+        if (!kbd_connected) {
+            uint32_t t = to_ms_since_boot(get_absolute_time());
+            gpio_put(LED_PIN, (t / LED_BLINK_MS) % 2);
+        }
     }
 
     return 0;
