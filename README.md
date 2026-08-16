@@ -94,7 +94,7 @@ Each layout supplies a `base` and a `shift` table of `LAYOUT_TABLE_SIZE` (0x70) 
 
 ## Revisions
 
-- v1.1.0 (2026-08-16): (https://github.com/simonboak/SB-mini-II-Keyboard/releases/tag/v1.1.0)[Release notes]
+- v1.1.0 (2026-08-16): [https://github.com/simonboak/SB-mini-II-Keyboard/releases/tag/v1.1.0](Release notes)
 
 ## Contributions
 
