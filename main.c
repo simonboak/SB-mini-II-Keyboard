@@ -82,7 +82,7 @@ static const uint8_t keycode_to_ascii_shift[] = {
 // State
 // ---------------------------------------------------------------------------
 static hid_keyboard_report_t prev_report = {0};
-static bool caps_lock = false;
+static bool caps_lock = true;   // Apple II expects uppercase; on by default
 static bool kbd_connected = false;
 
 // ---------------------------------------------------------------------------
