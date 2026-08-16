@@ -22,6 +22,14 @@
 #include "hardware/gpio.h"
 #include "tusb.h"
 
+#include "layouts/layout.h"
+
+// Layout is chosen at build time: cmake -DKEYBOARD_LAYOUT=de ..
+#ifndef KEYBOARD_LAYOUT_HEADER
+#define KEYBOARD_LAYOUT_HEADER "layouts/layout_us.h"
+#endif
+#include KEYBOARD_LAYOUT_HEADER
+
 // ---------------------------------------------------------------------------
 // Pin definitions
 // ---------------------------------------------------------------------------
@@ -48,39 +56,12 @@
 #define APPLE_UP     0x0B   // Ctrl-K (VT)
 
 // ---------------------------------------------------------------------------
-// HID keycode to ASCII lookup tables
-// Indexed by USB HID keycode (0x00 - 0x52)
-// ---------------------------------------------------------------------------
-
-// clang-format off
-static const uint8_t keycode_to_ascii[] = {
-//  0x_0  0x_1  0x_2  0x_3  0x_4  0x_5  0x_6  0x_7  0x_8  0x_9  0x_A  0x_B  0x_C  0x_D  0x_E  0x_F
-    0,    0,    0,    0,    'a',  'b',  'c',  'd',  'e',  'f',  'g',  'h',  'i',  'j',  'k',  'l',  // 0x00
-    'm',  'n',  'o',  'p',  'q',  'r',  's',  't',  'u',  'v',  'w',  'x',  'y',  'z',  '1',  '2',  // 0x10
-    '3',  '4',  '5',  '6',  '7',  '8',  '9',  '0', '\r',  0x1B, 0x08, '\t', ' ',  '-',  '=',  '[',  // 0x20
-    ']',  '\\', 0,    ';',  '\'', '`',  ',',  '.',  '/',  0,    0,    0,    0,    0,    0,    0,    // 0x30
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0x7F, 0,    0,    0x15, // 0x40
-    0x08, 0x0A, 0x0B, 0,    '/',  '*',  '-',  '+',  '\r', '1',  '2',  '3',  '4',  '5',  '6',  '7',  // 0x50
-    '8',  '9',  '0',  '.',  0,    0,    0,    '='                                                   // 0x60
-};
-
-static const uint8_t keycode_to_ascii_shift[] = {
-//  0x_0  0x_1  0x_2  0x_3  0x_4  0x_5  0x_6  0x_7  0x_8  0x_9  0x_A  0x_B  0x_C  0x_D  0x_E  0x_F
-    0,    0,    0,    0,    'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  // 0x00
-    'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z',  '!',  '@',  // 0x10
-    '#',  '$',  '%',  '^',  '&',  '*',  '(',  ')',  '\r', 0x1B, 0x08, '\t', ' ',  '_',  '+',  '{',  // 0x20
-    '}',  '|',  0,    ':',  '"',  '~',  '<',  '>',  '?',  0,    0,    0,    0,    0,    0,    0,    // 0x30
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0x7F, 0,    0,    0x15, // 0x40
-    0x08, 0x0A, 0x0B, 0,    '/',  '*',  '-',  '+', '\r',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  // 0x50
-    '8',  '9',  '0',  '.',  0,    0,    0,    '='                                                   // 0x60
-};
-// clang-format on
-
-#define KEYCODE_TABLE_SIZE (sizeof(keycode_to_ascii))
-
-// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
+
+// The compiled-in layout. A pointer rather than direct use of keyboard_layout
+// so that runtime layout switching stays a small change later.
+static const keyboard_layout_t *layout = &keyboard_layout;
 static hid_keyboard_report_t prev_report = {0};
 static bool caps_lock = true;   // Apple II expects uppercase; on by default
 static bool kbd_connected = false;
@@ -157,7 +138,7 @@ static void output_key(uint8_t ascii) {
 // ---------------------------------------------------------------------------
 
 static uint8_t hid_to_ascii(uint8_t keycode, uint8_t modifier) {
-    if (keycode >= KEYCODE_TABLE_SIZE) {
+    if (keycode >= LAYOUT_TABLE_SIZE) {
         return 0;
     }
 
@@ -165,19 +146,31 @@ static uint8_t hid_to_ascii(uint8_t keycode, uint8_t modifier) {
                               KEYBOARD_MODIFIER_RIGHTSHIFT)) != 0;
     bool ctrl  = (modifier & (KEYBOARD_MODIFIER_LEFTCTRL |
                               KEYBOARD_MODIFIER_RIGHTCTRL)) != 0;
+    bool altgr = (modifier & KEYBOARD_MODIFIER_RIGHTALT) != 0;
 
-    // Caps Lock inverts shift for letters only
-    bool is_letter = (keycode >= HID_KEY_A && keycode <= HID_KEY_Z);
+    // Which key is a letter comes from the layout, not the keycode: German
+    // transposes Y and Z, so the keycode alone says nothing about the letter.
+    uint8_t unshifted = layout->base[keycode];
+    bool is_letter = (unshifted >= 'a' && unshifted <= 'z');
+
+    // Caps Lock inverts shift for letters only, so digits stay digits
     if (caps_lock && is_letter) {
         shift = !shift;
     }
 
-    uint8_t ascii = shift ? keycode_to_ascii_shift[keycode]
-                          : keycode_to_ascii[keycode];
+    uint8_t ascii;
+    if (altgr && layout->altgr) {
+        ascii = layout->altgr[keycode];
+    } else if (shift) {
+        ascii = layout->shift[keycode];
+    } else {
+        ascii = unshifted;
+    }
 
-    // Ctrl + letter: produce 0x01 (Ctrl-A) through 0x1A (Ctrl-Z)
+    // Ctrl + letter: produce 0x01 (Ctrl-A) through 0x1A (Ctrl-Z). Derived from
+    // the letter the layout produces, so Ctrl-Z is the key labelled Z.
     if (ctrl && is_letter) {
-        ascii = (keycode - HID_KEY_A) + 1;
+        ascii = (unshifted - 'a') + 1;
     }
 
     return ascii;
@@ -335,6 +328,7 @@ int main(void) {
     init_gpio();
 
     printf("SB Mini II Keyboard Controller\n");
+    printf("Layout: %s\n", layout->name);
 
     // Power-on reset pulse
     printf("Power-on reset...\n");

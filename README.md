@@ -44,6 +44,7 @@ USB keyboard interface for an Apple II replica, using a Raspberry Pi Pico. Conve
 ## Features
 
 - USB HID keyboard input via TinyUSB host mode on the Pico's onboard USB port
+- Selectable keyboard layout at build time (US and German included)
 - Full keycode-to-ASCII conversion with shift, caps lock, and ctrl modifier support
 - Caps Lock enabled on boot (the Apple II expects uppercase); it affects letters only, so number keys still produce digits unshifted. Press Caps Lock to toggle it off.
 - Keyboard's own Caps Lock LED driven to match, via a HID output report (set on connect and on every toggle)
@@ -71,3 +72,22 @@ make
 ```
 
 This produces `sb_mini_ii_keyboard.uf2`. Hold the BOOTSEL button while connecting the Pico, then copy the UF2 file to the mounted drive.
+
+## Keyboard layouts
+
+The layout is fixed at build time with `-DKEYBOARD_LAYOUT`, defaulting to `us`:
+
+```
+cmake -DPICO_SDK_PATH=/path/to/pico-sdk -DKEYBOARD_LAYOUT=de ..
+```
+
+| Value | Layout                |
+|-------|-----------------------|
+| `us`  | US English (ANSI)     |
+| `de`  | German (DIN 2137 T1)  |
+
+The selected layout is printed on the UART at startup. An unrecognised value fails at CMake configure time.
+
+To add a layout, copy `layouts/layout_us.h` to `layouts/layout_<code>.h`, edit the two tables and the name, and add the code to the `STRINGS` property in `CMakeLists.txt`. No changes to `main.c` are needed.
+
+Each layout supplies a `base` and a `shift` table of `LAYOUT_TABLE_SIZE` (0x70) entries indexed by USB HID keycode, and optionally an `altgr` table for layouts that need a third level (`NULL` if not). Bear in mind the Apple II charset is 7-bit uppercase ASCII, so accented characters have no representation — the German layout reuses those otherwise-dead key slots for the characters a German keyboard normally reaches via AltGr. See the comments in `layouts/layout_de.h`.
