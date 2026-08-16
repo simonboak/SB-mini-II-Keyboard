@@ -91,3 +91,11 @@ The selected layout is printed on the UART at startup. An unrecognised value fai
 To add a layout, copy `layouts/layout_us.h` to `layouts/layout_<code>.h`, edit the two tables and the name, and add the code to the `STRINGS` property in `CMakeLists.txt`. No changes to `main.c` are needed.
 
 Each layout supplies a `base` and a `shift` table of `LAYOUT_TABLE_SIZE` (0x70) entries indexed by USB HID keycode, and optionally an `altgr` table for layouts that need a third level (`NULL` if not). Bear in mind the Apple II charset is 7-bit uppercase ASCII, so accented characters have no representation — the German layout reuses those otherwise-dead key slots for the characters a German keyboard normally reaches via AltGr. See the comments in `layouts/layout_de.h`.
+
+## Revisions
+
+- v1.1.0 (2026-08-16): (https://github.com/simonboak/SB-mini-II-Keyboard/releases/tag/v1.1.0)[Release notes]
+
+## Contributions
+
+- Thanks to Reid for your testing and supplying the backspace and numpad scan codes.
