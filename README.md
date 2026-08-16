@@ -1,6 +1,6 @@
 # SB Mini II Keyboard Controller
 
-USB keyboard interface for an Apple II replica, using a Raspberry Pi Pico. Converts USB HID keyboard input to 7-bit parallel ASCII output with STROBE signal matching the original Apple II keyboard interface.
+USB keyboard interface for my Apple II replica [the SB mini II](https://github.com/simonboak/SB-mini-II/), using a Raspberry Pi Pico. Converts USB HID keyboard input to 7-bit parallel ASCII output with STROBE signal matching the original Apple II keyboard interface.
 
 **RESET signal is active HIGH vs active LOW** - use a NPN transistor to pull the Apple II's reset line low.
 
@@ -94,7 +94,7 @@ Each layout supplies a `base` and a `shift` table of `LAYOUT_TABLE_SIZE` (0x70) 
 
 ## Revisions
 
-- v1.1.0 (2026-08-16): https://github.com/simonboak/SB-mini-II-Keyboard/releases/tag/v1.1.0
+- v1.1.0 (2026-08-16): [Release Notes](https://github.com/simonboak/SB-mini-II-Keyboard/releases/tag/v1.1.0)
 
 ## Contributions
 
