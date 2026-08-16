@@ -46,6 +46,7 @@ USB keyboard interface for an Apple II replica, using a Raspberry Pi Pico. Conve
 - USB HID keyboard input via TinyUSB host mode on the Pico's onboard USB port
 - Full keycode-to-ASCII conversion with shift, caps lock, and ctrl modifier support
 - Caps Lock enabled on boot (the Apple II expects uppercase); it affects letters only, so number keys still produce digits unshifted. Press Caps Lock to toggle it off.
+- Keyboard's own Caps Lock LED driven to match, via a HID output report (set on connect and on every toggle)
 - Arrow keys mapped to Apple II codes (left=0x08, right=0x15, down=0x0A, up=0x0B)
 - Ctrl+letter produces control codes 0x01-0x1A
 - Shift key state output on GP11 for Apple II game connector

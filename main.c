@@ -86,6 +86,20 @@ static bool caps_lock = true;   // Apple II expects uppercase; on by default
 static bool kbd_connected = false;
 
 // ---------------------------------------------------------------------------
+// Keyboard lock LEDs
+//
+// A USB keyboard does not light its own Caps Lock LED. As the host we have to
+// send it an output report saying which lock LEDs to light, so the LED tracks
+// caps_lock rather than the physical key.
+// ---------------------------------------------------------------------------
+static uint8_t kbd_dev_addr = 0;
+static uint8_t kbd_instance = 0;
+static uint8_t kbd_led_report = 0;      // static: the transfer is async, so this
+                                        // buffer must outlive the call below
+static bool led_update_pending = false;
+static bool led_report_busy = false;
+
+// ---------------------------------------------------------------------------
 // GPIO
 // ---------------------------------------------------------------------------
 
@@ -170,6 +184,40 @@ static uint8_t hid_to_ascii(uint8_t keycode, uint8_t modifier) {
 }
 
 // ---------------------------------------------------------------------------
+// Keyboard LED output report
+// ---------------------------------------------------------------------------
+
+// Called from the main loop rather than straight from a USB callback: this is a
+// control transfer, and issuing one from inside mount/report callbacks races
+// with the transfers TinyUSB is already running there.
+static void update_kbd_leds(void) {
+    if (!kbd_connected || !led_update_pending || led_report_busy) {
+        return;
+    }
+
+    kbd_led_report = caps_lock ? KEYBOARD_LED_CAPSLOCK : 0;
+
+    if (tuh_hid_set_report(kbd_dev_addr, kbd_instance, 0, HID_REPORT_TYPE_OUTPUT,
+                           &kbd_led_report, sizeof(kbd_led_report))) {
+        led_update_pending = false;
+        led_report_busy = true;
+    }
+    // If the call failed the keyboard is busy; the pending flag stays set and
+    // we retry on the next pass.
+}
+
+void tuh_hid_set_report_complete_cb(uint8_t dev_addr, uint8_t instance,
+                                    uint8_t report_id, uint8_t report_type,
+                                    uint16_t len) {
+    (void)dev_addr;
+    (void)instance;
+    (void)report_id;
+    (void)report_type;
+    (void)len;
+    led_report_busy = false;
+}
+
+// ---------------------------------------------------------------------------
 // HID report processing
 // ---------------------------------------------------------------------------
 
@@ -193,6 +241,7 @@ static void process_kbd_report(hid_keyboard_report_t const *report) {
         if (report->keycode[i] == HID_KEY_CAPS_LOCK &&
             is_new_key(HID_KEY_CAPS_LOCK, &prev_report)) {
             caps_lock = !caps_lock;
+            led_update_pending = true;
         }
     }
 
@@ -241,6 +290,13 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance,
         kbd_connected = true;
         gpio_put(LED_PIN, 1);
 
+        // Push the current caps_lock state to the keyboard's LED, so a freshly
+        // plugged keyboard shows the boot-on state instead of a dark LED
+        kbd_dev_addr = dev_addr;
+        kbd_instance = instance;
+        led_report_busy = false;
+        led_update_pending = true;
+
         // Request boot protocol for fixed-format reports
         if (!tuh_hid_receive_report(dev_addr, instance)) {
             printf("Error: failed to request HID report\n");
@@ -253,6 +309,8 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
     (void)instance;
     printf("Keyboard disconnected\n");
     kbd_connected = false;
+    led_update_pending = false;
+    led_report_busy = false;
     memset(&prev_report, 0, sizeof(prev_report));
 }
 
@@ -289,6 +347,7 @@ int main(void) {
 
     while (true) {
         tuh_task();
+        update_kbd_leds();
 
         // Blink LED while waiting for keyboard; solid on when connected
         if (!kbd_connected) {
