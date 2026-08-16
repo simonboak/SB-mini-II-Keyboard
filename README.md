@@ -8,8 +8,8 @@ USB keyboard interface for an Apple II replica, using a Raspberry Pi Pico. Conve
 
 ```
                           +---------------+
-      UART TX  <--  GP0  | 1   [USB]   40| VBUS
-      UART RX  -->  GP1  | 2           39| VSYS
+       UART TX  <--  GP0  | 1   [USB]   40| VBUS
+       UART RX  -->  GP1  | 2           39| VSYS
                      GND  | 3           38| GND
             D0  <--  GP2  | 4           37| 3V3_EN
             D1  <--  GP3  | 5           36| 3V3
